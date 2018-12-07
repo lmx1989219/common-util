@@ -1,5 +1,5 @@
 
-package com.lmx.common.filter.wrapper;
+package com.lmx.common.crypt.wrapper;
 
 
 import javax.servlet.ServletOutputStream;
@@ -11,10 +11,10 @@ import java.io.IOException;
 /**
  * Created by Administrator on 2017/8/27.
  */
-public class EncodeWrapServletResponse extends HttpServletResponseWrapper {
-    ServletOutputStreamWrap servletOutputStreamWrap;
+public class EncryptWrapServletResponse extends HttpServletResponseWrapper {
+    private ServletOutputStreamWrap servletOutputStreamWrap;
 
-    public EncodeWrapServletResponse(ServletResponse response, ServletOutputStreamWrap servletOutputStreamWrap) {
+    public EncryptWrapServletResponse(ServletResponse response, ServletOutputStreamWrap servletOutputStreamWrap) {
         super((HttpServletResponse) response);
         this.servletOutputStreamWrap = servletOutputStreamWrap;
     }
@@ -28,7 +28,7 @@ public class EncodeWrapServletResponse extends HttpServletResponseWrapper {
     }
 
     public static class ServletOutputStreamWrap extends ServletOutputStream {
-        StringBuilder stringBuilder = new StringBuilder();
+        private StringBuilder stringBuilder = new StringBuilder();
 
         public ServletOutputStreamWrap() {
         }
@@ -39,7 +39,10 @@ public class EncodeWrapServletResponse extends HttpServletResponseWrapper {
         }
 
         public String get() {
-            return stringBuilder.toString();
+            try {
+                return stringBuilder.toString();
+            } finally {
+            }
         }
     }
 

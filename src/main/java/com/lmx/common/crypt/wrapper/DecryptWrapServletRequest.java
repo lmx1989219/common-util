@@ -1,4 +1,4 @@
-package com.lmx.common.filter.wrapper;
+package com.lmx.common.crypt.wrapper;
 
 
 import javax.servlet.ServletInputStream;
@@ -12,10 +12,10 @@ import java.io.InputStream;
 /**
  * Created by Administrator on 2017/8/27.
  */
-public class DecodeWrapServletRequest extends HttpServletRequestWrapper {
-    byte[] req;
+public class DecryptWrapServletRequest extends HttpServletRequestWrapper {
+    private byte[] req;
 
-    public DecodeWrapServletRequest(ServletRequest request, byte[] req) {
+    public DecryptWrapServletRequest(ServletRequest request, byte[] req) {
         super((HttpServletRequest) request);
         this.req = req;
     }
