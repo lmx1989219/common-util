@@ -6,9 +6,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.zookeeper.CreateMode;
 
-import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -23,8 +21,6 @@ public class ZkLock implements DistributeLock {
     public ZkLock(String zookeeperConnectionString) throws Exception {
         curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
         curatorFramework.start();
-        curatorFramework.create()
-                .withMode(CreateMode.PERSISTENT).forPath(LOCK_PATH);
     }
 
     @Override
