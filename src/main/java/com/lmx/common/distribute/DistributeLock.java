@@ -11,5 +11,5 @@ public interface DistributeLock {
 
     void lock(String lockKey) throws Exception;
 
-    void unLock(String lockKey) throws Exception;
+    void unLock() throws Exception;
 }

@@ -7,7 +7,7 @@
     <groupId>com.lmx</groupId>
     <artifactId>common-util</artifactId>
     <version>1.0-SNAPSHOT</version>
-    
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -81,9 +81,6 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
                 <configuration>
-                    <includes>
-                        <include>com/qk365/lcsys/*</include>
-                    </includes>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                 </configuration>
@@ -92,14 +89,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.1.0</version>
-                <configuration>
-                    <excludes>
-                        <exclude>application.properties</exclude>
-                        <exclude>mybatis-config.xml</exclude>
-                        <exclude>mapper/**</exclude>
-                        <exclude>logback.xml</exclude>
-                    </excludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>

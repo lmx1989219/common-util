@@ -54,12 +54,10 @@ public class OpHibernateInterceptor extends EmptyInterceptor {
         }
     }
 
-    //called after committed into database
     public void postFlush(Iterator iterator) {
         if (ContextHolder.hasContext()) {
             try {
                 Object uObj;
-                //记录操作
                 if ((uObj = updates.get()) != null) {
                     ContextHolder.set(caches);
                     ContextHolder.set(uObj);
@@ -70,13 +68,6 @@ public class OpHibernateInterceptor extends EmptyInterceptor {
         }
     }
 
-    /**
-     * called by commit or rollback
-     * <p>
-     * 保证threadlocal被删除
-     *
-     * @param tx
-     */
     @Override
     public void afterTransactionCompletion(Transaction tx) {
         if (ContextHolder.hasContext()) {

@@ -4,6 +4,7 @@ package com.lmx.common.crypt.wrapper;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.ServletResponse;
+import javax.servlet.WriteListener;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
@@ -31,6 +32,16 @@ public class EncryptWrapServletResponse extends HttpServletResponseWrapper {
         private StringBuilder stringBuilder = new StringBuilder();
 
         public ServletOutputStreamWrap() {
+        }
+
+        @Override
+        public boolean isReady() {
+            return false;
+        }
+
+        @Override
+        public void setWriteListener(WriteListener writeListener) {
+
         }
 
         @Override

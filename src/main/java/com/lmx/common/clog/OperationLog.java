@@ -38,9 +38,6 @@ public class OperationLog {
     private String publicKeyToken;
     //用户名称
     private String userName;
-//private String topicName;
-//private String es_index;
-
 
     public int getAppId() {
         return appId;

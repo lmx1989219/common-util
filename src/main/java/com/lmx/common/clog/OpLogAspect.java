@@ -15,6 +15,9 @@ import java.util.List;
 @Aspect
 public class OpLogAspect {
     private Logger log = LoggerFactory.getLogger(getClass());
+    /**
+     * appender 格式只保留msg
+     */
     private Logger log_es = LoggerFactory.getLogger("es_log");
 
     /**

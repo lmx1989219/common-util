@@ -1,6 +1,7 @@
 package com.lmx.common.crypt.wrapper;
 
 
+import javax.servlet.ReadListener;
 import javax.servlet.ServletInputStream;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
@@ -45,5 +46,19 @@ public class DecryptWrapServletRequest extends HttpServletRequestWrapper {
             this.sourceStream.close();
         }
 
+        @Override
+        public boolean isFinished() {
+            return false;
+        }
+
+        @Override
+        public boolean isReady() {
+            return false;
+        }
+
+        @Override
+        public void setReadListener(ReadListener readListener) {
+
+        }
     }
 }

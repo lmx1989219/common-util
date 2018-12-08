@@ -6,5 +6,5 @@ package com.lmx.common.distribute;
 public interface IdWorker {
     long nextId(String key) throws Exception;
 
-    long nextId();
+    long nextId() throws Exception;
 }

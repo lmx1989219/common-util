@@ -6,7 +6,9 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.CreateMode;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,15 +18,18 @@ public class ZkLock implements DistributeLock {
     private RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
     private CuratorFramework curatorFramework;
     private ThreadLocal<InterProcessMutex> threadLocal = new ThreadLocal<>();
+    private static final String LOCK_PATH = "/lock";
 
-    public ZkLock(String zookeeperConnectionString) {
+    public ZkLock(String zookeeperConnectionString) throws Exception {
         curatorFramework = CuratorFrameworkFactory.newClient(zookeeperConnectionString, retryPolicy);
         curatorFramework.start();
+        curatorFramework.create()
+                .withMode(CreateMode.PERSISTENT).forPath(LOCK_PATH);
     }
 
     @Override
     public boolean tryLock(long time, TimeUnit timeUnit, String lockKey) throws Exception {
-        InterProcessMutex lock = new InterProcessMutex(curatorFramework, lockKey);
+        InterProcessMutex lock = new InterProcessMutex(curatorFramework, LOCK_PATH + "/" + lockKey);
         try {
             return lock.acquire(time, timeUnit);
         } finally {
@@ -34,13 +39,13 @@ public class ZkLock implements DistributeLock {
 
     @Override
     public void lock(String lockKey) throws Exception {
-        InterProcessMutex lock = new InterProcessMutex(curatorFramework, lockKey);
+        InterProcessMutex lock = new InterProcessMutex(curatorFramework, LOCK_PATH + "/" + lockKey);
         lock.acquire();
         threadLocal.set(lock);
     }
 
     @Override
-    public void unLock(String lockKey) throws Exception {
+    public void unLock() throws Exception {
         threadLocal.get().release();
         threadLocal.remove();
     }
