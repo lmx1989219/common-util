@@ -1,4 +1,4 @@
-package com.lmx.common.crypt.wrapper;
+package com.lmx.common.rest.proto.crypt.wrapper;
 
 
 import javax.servlet.ReadListener;
@@ -48,17 +48,24 @@ public class DecryptWrapServletRequest extends HttpServletRequestWrapper {
 
         @Override
         public boolean isFinished() {
-            return false;
+            try {
+                return this.sourceStream.read() == -1;
+            } catch (IOException e) {
+                return false;
+            }
         }
 
         @Override
         public boolean isReady() {
-            return false;
+            try {
+                return this.sourceStream.read() > 0;
+            } catch (IOException e) {
+                return false;
+            }
         }
 
         @Override
         public void setReadListener(ReadListener readListener) {
-
         }
     }
 }

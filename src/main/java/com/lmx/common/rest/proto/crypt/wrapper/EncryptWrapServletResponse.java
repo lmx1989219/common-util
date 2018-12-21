@@ -1,5 +1,5 @@
 
-package com.lmx.common.crypt.wrapper;
+package com.lmx.common.rest.proto.crypt.wrapper;
 
 
 import javax.servlet.ServletOutputStream;
@@ -36,7 +36,7 @@ public class EncryptWrapServletResponse extends HttpServletResponseWrapper {
 
         @Override
         public boolean isReady() {
-            return false;
+            return stringBuilder.length() > 0;
         }
 
         @Override
@@ -53,6 +53,7 @@ public class EncryptWrapServletResponse extends HttpServletResponseWrapper {
             try {
                 return stringBuilder.toString();
             } finally {
+                stringBuilder = null;
             }
         }
     }

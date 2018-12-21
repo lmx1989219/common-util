@@ -42,7 +42,8 @@ public class ZkLock implements DistributeLock {
 
     @Override
     public void unLock() throws Exception {
-        threadLocal.get().release();
+        InterProcessMutex lock = threadLocal.get();
+        lock.release();
         threadLocal.remove();
     }
 }

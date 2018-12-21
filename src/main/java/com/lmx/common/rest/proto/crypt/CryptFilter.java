@@ -1,10 +1,10 @@
-package com.lmx.common.crypt;
+package com.lmx.common.rest.proto.crypt;
 
 
-import com.lmx.common.crypt.spi.Decrypt;
-import com.lmx.common.crypt.spi.Encrypt;
-import com.lmx.common.crypt.wrapper.DecryptWrapServletRequest;
-import com.lmx.common.crypt.wrapper.EncryptWrapServletResponse;
+import com.lmx.common.rest.proto.crypt.spi.Decrypt;
+import com.lmx.common.rest.proto.crypt.spi.Encrypt;
+import com.lmx.common.rest.proto.crypt.wrapper.DecryptWrapServletRequest;
+import com.lmx.common.rest.proto.crypt.wrapper.EncryptWrapServletResponse;
 
 import javax.servlet.*;
 import java.io.IOException;
@@ -16,6 +16,7 @@ import java.io.PrintWriter;
  */
 public class CryptFilter implements Filter {
     private org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
+    private final static int BUF_SIZE = 1024 * 20;
     private Encrypt encode;
     private Decrypt decode;
 
@@ -29,7 +30,7 @@ public class CryptFilter implements Filter {
     }
 
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        byte[] body = new byte[1024 * 10];
+        byte[] body = new byte[BUF_SIZE];
         int length = servletRequest.getInputStream().read(body);
         byte[] cp = new byte[length];
         System.arraycopy(body, 0, cp, 0, length);
@@ -51,6 +52,5 @@ public class CryptFilter implements Filter {
     }
 
     public void destroy() {
-
     }
 }

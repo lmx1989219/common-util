@@ -21,7 +21,7 @@ public class OperationLog {
     //操作人名称
     private String opName;
     //操作类型 默认修改
-    private String operationType = "Modify";//Add,Modify,Delete
+    private String operationType = "Modify";
     // 业务操作名称（对接口的概要描述）
     private String operationName;
     // 操作前值
