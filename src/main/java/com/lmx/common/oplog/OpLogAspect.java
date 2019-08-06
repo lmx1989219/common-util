@@ -1,5 +1,6 @@
-package com.lmx.common.clog;
+package com.lmx.common.oplog;
 
+import com.lmx.common.oplog.util.OpLogUtil;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -15,10 +16,6 @@ import java.util.List;
 @Aspect
 public class OpLogAspect {
     private Logger log = LoggerFactory.getLogger(getClass());
-    /**
-     * appender 格式只保留msg
-     */
-    private Logger log_es = LoggerFactory.getLogger("es_log");
 
     /**
      * 仅在声明注解的时候启用日志收集
@@ -30,11 +27,6 @@ public class OpLogAspect {
         ContextHolder.initContext();
     }
 
-    /**
-     * 在controller层声明注解
-     *
-     * @param opLogCollect
-     */
     @AfterReturning("@annotation(opLogCollect)")
     public void adviceAfterReturning(final OpLog opLogCollect) {
         try {
@@ -52,7 +44,7 @@ public class OpLogAspect {
                     if (i % 2 == 0) {
                         ((ThreadLocal) l_.get(i)).remove();
                     } else {
-                        printLog(l_.get(i), opLogCollect);
+                        OpLogUtil.printLog(l_.get(i), opLogCollect);
                     }
                 }
             }
@@ -61,20 +53,6 @@ public class OpLogAspect {
             log.error("", throwable);
         } finally {
             ContextHolder.clear();
-        }
-    }
-
-    private void printLog(List l, OpLog opLogCollect) {
-        OperationLog operationLog = new OperationLog();
-        int i = 0;
-        //偶数为改前值，奇数为改后值
-        for (i = 2 * i; 2 * i < l.size(); ++i) {
-            String oldVal = (String) l.get(2 * i);
-            String newVal = (String) l.get(2 * i + 1);
-            operationLog.setModifyValue(newVal);
-            operationLog.setOriginalValue(oldVal);
-            //json结构输出，让filebeats完成后续导入kafka
-            log_es.info(operationLog.toString());
         }
     }
 

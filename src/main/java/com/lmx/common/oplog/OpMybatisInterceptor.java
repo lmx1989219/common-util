@@ -1,5 +1,11 @@
-package com.lmx.common.clog;
+package com.lmx.common.oplog;
 
+import com.alibaba.druid.sql.ast.SQLObject;
+import com.alibaba.druid.sql.ast.statement.SQLUpdateSetItem;
+import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
+import com.alibaba.druid.sql.parser.SQLParserUtils;
+import com.alibaba.druid.sql.parser.SQLStatementParser;
+import com.alibaba.druid.util.JdbcConstants;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -77,6 +83,9 @@ public class OpMybatisInterceptor implements Interceptor {
                     ContextHolder.set(this.compareDiff(sql, cache));
                 } catch (Exception e) {
                     log.error("operator log error", e);
+                } finally {
+                    //每次比对完成，需要释放
+                    cachesQry.remove();
                 }
             }
         }
@@ -84,17 +93,15 @@ public class OpMybatisInterceptor implements Interceptor {
             //缓存当前线程查询的数据
             if (cachesQry.get() == null) {
                 List list = Lists.newArrayList();
-                //注意：这里以文本缓存，对象需要深度复制，否则会因为持久完成被自动更新掉
+                //注意：这里以文本缓存，对象需要深度复制，否则会因为持久完成被更新掉
                 list.add(new Gson().toJson(returnObj));
                 cachesQry.set(list);
-            } else {
-                ((List) cachesQry.get()).add(new Gson().toJson(returnObj));
             }
         }
         return returnObj;
     }
 
-    private DataSource getDataSource() {
+    private javax.sql.DataSource getDataSource() {
         org.apache.ibatis.transaction.Transaction transaction = this.target.getTransaction();
         if (transaction == null) {
             log.error(String.format("Could not find transaction on target [%s]", this.target));
@@ -102,16 +109,16 @@ public class OpMybatisInterceptor implements Interceptor {
         }
         if (transaction instanceof SpringManagedTransaction) {
             String fieldName = "dataSource";
-            Field field = ReflectionUtils.findField(transaction.getClass(), fieldName, DataSource.class);
+            Field field = ReflectionUtils.findField(transaction.getClass(), fieldName, javax.sql.DataSource.class);
 
             if (field == null) {
                 log.error(String.format("Could not find field [%s] of type [%s] on target [%s]",
-                        fieldName, DataSource.class, this.target));
+                        fieldName, javax.sql.DataSource.class, this.target));
                 return null;
             }
 
             ReflectionUtils.makeAccessible(field);
-            DataSource dataSource = (DataSource) ReflectionUtils.getField(field, transaction);
+            javax.sql.DataSource dataSource = (javax.sql.DataSource) ReflectionUtils.getField(field, transaction);
             return dataSource;
         }
 
@@ -191,22 +198,26 @@ public class OpMybatisInterceptor implements Interceptor {
     }
 
     private void buildQuerySql(String sql, List cache) {
-        String tableName = sql.substring(sql.indexOf("update") + 6, sql.indexOf("set"));
-        String whereCondition = sql.substring(sql.indexOf("where") + 5, sql.length());
-        String selectColumStr = sql.substring(sql.indexOf("set") + 3, sql.indexOf("where"));
-        String[] arr = selectColumStr.split(",");
-        List list = Lists.newArrayList();
-        for (String s : arr) {
-            String[] kv = s.split("=");
-            String field = kv[0].trim();
-            list.add(field);
+        SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
+        SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
+        List<SQLObject> sqlObjects = sqlUpdateStatement.getWhere().getChildren();
+        StringBuilder whereCondition = new StringBuilder();
+        for (int i = 0; i < sqlObjects.size(); i++) {
+            if (i % 2 == 0)
+                whereCondition.append(sqlObjects.get(i) + "=");
+            else
+                whereCondition.append(sqlObjects.get(i) + " ");
         }
+        String tableName = sqlUpdateStatement.getTableName().getSimpleName();
+        List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
+        List list = Lists.newArrayList();
+        sqlUpdateSetItems.forEach(e -> list.add(e.getColumn()));
         String selectColums = Joiner.on(",").join(list);
 
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("select").append(" ").append(selectColums).append(" ");
         stringBuilder.append("from").append(" ").append(tableName).append(" ");
-        stringBuilder.append("where").append(" ").append(whereCondition);
+        stringBuilder.append("where").append(" ").append(whereCondition.toString());
         String querySQL = stringBuilder.toString();
         log.info("operator exec querySQL={}", querySQL);
 
@@ -227,14 +238,15 @@ public class OpMybatisInterceptor implements Interceptor {
     }
 
     private List compareDiff(String sql, List cache) {
-        String dest = sql.substring(sql.indexOf("set") + 3, sql.indexOf("where"));
-        String[] arr = dest.split(",");
+        SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
+        SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
+        List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
         List data = Lists.newArrayList();
         List data_ = Lists.newArrayList();
-        for (String s : arr) {
-            String[] kv = s.split("=");
-            String field = kv[0].trim();
-            String value = kv[1].trim().replaceAll("\\'", "");
+        for (int i = 0; i < sqlUpdateSetItems.size(); i++) {
+            SQLUpdateSetItem sqlUpdateSetItem = sqlUpdateSetItems.get(i);
+            String field = sqlUpdateSetItem.getColumn().toString();
+            String value = sqlUpdateSetItem.getValue().toString();
             List<String> list = (List) cachesQry.get();
             if (list != null) {
                 for (String object : list) {

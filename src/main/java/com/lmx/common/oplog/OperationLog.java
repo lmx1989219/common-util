@@ -1,4 +1,4 @@
-package com.lmx.common.clog;
+package com.lmx.common.oplog;
 
 import com.google.gson.Gson;
 

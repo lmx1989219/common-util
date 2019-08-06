@@ -1,4 +1,4 @@
-package com.lmx.common.clog;
+package com.lmx.common.oplog;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

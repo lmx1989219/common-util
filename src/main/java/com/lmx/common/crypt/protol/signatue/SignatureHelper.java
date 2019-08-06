@@ -1,4 +1,4 @@
-package com.lmx.common.rest.protol.signatue;
+package com.lmx.common.crypt.protol.signatue;
 
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.PublicKeySign;

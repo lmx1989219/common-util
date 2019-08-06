@@ -1,4 +1,4 @@
-package com.lmx.common.rest.proto.crypt.wrapper;
+package com.lmx.common.crypt.proto.crypt.wrapper;
 
 
 import javax.servlet.ReadListener;
