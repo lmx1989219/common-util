@@ -16,7 +16,7 @@ import java.util.List;
 
 @Aspect
 //最高优先级，比如出现在事务注解上层
-@Order(Integer.MIN_VALUE)
+@Order(-1)
 public class OpLogAspect {
     private Logger log = LoggerFactory.getLogger(getClass());
 
