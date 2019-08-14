@@ -34,6 +34,11 @@ import java.text.DateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 
+/**
+ * 目前只适用mysql
+ * <p>
+ * 基于dbType很容易扩展
+ */
 @Intercepts({
         @Signature(method = "query", type = Executor.class, args = {
                 MappedStatement.class, Object.class, RowBounds.class,

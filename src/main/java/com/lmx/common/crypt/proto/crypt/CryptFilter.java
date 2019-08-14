@@ -30,26 +30,29 @@ public class CryptFilter implements Filter {
     }
 
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        byte[] body = new byte[BUF_SIZE];
-        int length = servletRequest.getInputStream().read(body);
-        byte[] cp = new byte[length];
-        System.arraycopy(body, 0, cp, 0, length);
-        if (decode == null || encode == null)
-            throw new RuntimeException("must both implements encrypt and decrypt");
-        cp = decode.decrypt(cp);
-        log.debug("decrypt request body={}", new String(cp, "utf8"));
+        if (decode == null || encode == null) {
+            filterChain.doFilter(servletRequest, servletResponse);
+        } else {
+            byte[] body = new byte[BUF_SIZE];
+            int length = servletRequest.getInputStream().read(body);
+            byte[] cp = new byte[length];
+            System.arraycopy(body, 0, cp, 0, length);
+            cp = decode.decrypt(cp);
+            log.debug("decrypt request body={}", new String(cp, "utf8"));
 
-        DecryptWrapServletRequest wrapServletRequest = new DecryptWrapServletRequest(servletRequest, cp);
-        EncryptWrapServletResponse wrapServletResponse = new EncryptWrapServletResponse(servletResponse,
-                new EncryptWrapServletResponse.ServletOutputStreamWrap());
-        filterChain.doFilter(wrapServletRequest, wrapServletResponse);
+            DecryptWrapServletRequest wrapServletRequest = new DecryptWrapServletRequest(servletRequest, cp);
+            EncryptWrapServletResponse wrapServletResponse = new EncryptWrapServletResponse(servletResponse,
+                    new EncryptWrapServletResponse.ServletOutputStreamWrap());
+            filterChain.doFilter(wrapServletRequest, wrapServletResponse);
 
-        String resp = wrapServletResponse.getServletOutputStreamWrap().get();
-        log.debug("origin response body={}", resp);
-        PrintWriter printWriter = servletResponse.getWriter();
-        printWriter.print(encode.encrypt(resp.getBytes()));
-        printWriter.flush();
-        printWriter.close();
+            String resp = wrapServletResponse.getServletOutputStreamWrap().get();
+            log.debug("origin response body={}", resp);
+
+            PrintWriter printWriter = servletResponse.getWriter();
+            printWriter.print(encode.encrypt(resp.getBytes()));
+            printWriter.flush();
+            printWriter.close();
+        }
     }
 
     public void destroy() {

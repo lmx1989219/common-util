@@ -6,6 +6,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -14,11 +15,13 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @Aspect
+//最高优先级，比如出现在事务注解上层
+@Order(Integer.MIN_VALUE)
 public class OpLogAspect {
     private Logger log = LoggerFactory.getLogger(getClass());
 
     /**
-     * 仅在声明注解的时候启用日志收集
+     * 在声明注解的时候启用日志收集
      *
      * @param opLogCollect
      */

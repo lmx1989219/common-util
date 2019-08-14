@@ -38,17 +38,14 @@ public class ZkIdWorker implements IdWorker {
         if (curatorFramework.checkExists().forPath(ID_PATH) == null)
             curatorFramework.create()
                     .withMode(CreateMode.PERSISTENT).forPath(ID_PATH);
-        scheduledExecutorService.schedule(new Runnable() {
-            @Override
-            public void run() {
-                for (String idPath : ids.keySet()) {
-                    try {
-                        curatorFramework.delete().forPath(idPath);
-                    } catch (Exception e) {
-                    }
+        scheduledExecutorService.schedule(() -> {
+            for (String idPath : ids.keySet()) {
+                try {
+                    curatorFramework.delete().forPath(idPath);
+                } catch (Exception e) {
                 }
             }
-        }, 5, TimeUnit.SECONDS);
+        }, 5, TimeUnit.MINUTES);
     }
 
     @Override

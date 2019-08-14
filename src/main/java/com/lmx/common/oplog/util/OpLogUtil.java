@@ -15,11 +15,10 @@ public class OpLogUtil {
 
     public static void printLog(List l, OpLog opLogCollect) {
         OperationLog operationLog = new OperationLog();
-        int i = 0;
         //偶数为改前值，奇数为改后值
-        for (i = 2 * i; 2 * i < l.size(); ++i) {
-            String oldVal = (String) l.get(2 * i);
-            String newVal = (String) l.get(2 * i + 1);
+        for (int i = 0; i < l.size(); ++i) {
+            String oldVal = (String) l.get(i++);//0 2
+            String newVal = (String) l.get(i++);//1 4
             operationLog.setModifyValue(newVal);
             operationLog.setOriginalValue(oldVal);
             //json结构输出，让filebeats完成后续导入kafka
