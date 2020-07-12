@@ -10,29 +10,32 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class DefaultAesServiceImpl implements EncAndDecryptService {
-  private String aesKey = "14LbKUwKowbSgARK6/uSpw==";
+    private String aesKey = "14LbKUwKowbSgARK6/uSpw==";
 
-  public DefaultAesServiceImpl(String aesKey) {
-    this.aesKey = aesKey;
-  }
-
-  @Override
-  public String decrypt(String secretStr) {
-    try {
-      return AesUtil.decrypt(secretStr, aesKey, Charsets.UTF_8.toString());
-    } catch (Exception e) {
-      log.error("decrypt error", e);
-      return null;
+    public DefaultAesServiceImpl(String aesKey) {
+        this.aesKey = aesKey;
     }
-  }
 
-  @Override
-  public String encrypt(String originStr) {
-    try {
-      return AesUtil.encrypt(originStr, aesKey, Charsets.UTF_8.toString());
-    } catch (Exception e) {
-      log.error("encrypt error", e);
-      return null;
+    public DefaultAesServiceImpl() {
     }
-  }
+
+    @Override
+    public String decrypt(String secretStr) {
+        try {
+            return AesUtil.decrypt(secretStr, aesKey, Charsets.UTF_8.toString());
+        } catch (Exception e) {
+            log.error("decrypt error", e);
+            return null;
+        }
+    }
+
+    @Override
+    public String encrypt(String originStr) {
+        try {
+            return AesUtil.encrypt(originStr, aesKey, Charsets.UTF_8.toString());
+        } catch (Exception e) {
+            log.error("encrypt error", e);
+            return null;
+        }
+    }
 }
