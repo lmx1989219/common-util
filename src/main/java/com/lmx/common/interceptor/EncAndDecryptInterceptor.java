@@ -148,7 +148,8 @@ public class EncAndDecryptInterceptor implements Interceptor {
                         if (field.getDeclaredAnnotation(EncDecrypt.class) != null) {
                             field.setAccessible(true);
                             Object enc = field.get(entity);
-                            field.set(entity, decryptField(enc));
+                            if (Objects.nonNull(enc))
+                                field.set(entity, decryptField(enc));
                         }
                     }
                 }
