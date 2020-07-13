@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 /**
  * 实体字段加解密拦截器
+ * <p>
  * Created by lucas on 2020/7/8.
  */
 @Intercepts({@Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class})
