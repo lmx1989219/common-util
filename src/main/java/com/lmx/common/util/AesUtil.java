@@ -47,7 +47,7 @@ public class AesUtil {
     return cipher.doFinal(data);
   }
 
-  private static byte[] encrypt(byte[] data, byte[] key)
+  public static byte[] encrypt(byte[] data, byte[] key)
     throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException,
     IllegalBlockSizeException {
     Key k = toKey(key);

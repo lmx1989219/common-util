@@ -5,6 +5,7 @@ import com.lmx.common.oplog.OperationLog;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.util.List;
 
@@ -36,9 +37,11 @@ public class OpLogUtil {
         for (i = 2 * i; 2 * i < l.size(); ++i) {
             String oldVal = (String) l.get(2 * i);
             String newVal = (String) l.get(2 * i + 1);
+            operationLog.setAppName(System.getProperty("spring.application.name"));
             operationLog.setModifyValue(newVal);
             operationLog.setOriginalValue(oldVal);
             //json结构输出，让filebeats完成后续导入kafka
+            operationLog.setTraceId(MDC.get("X-B3-TraceId"));
             log_es.info(operationLog.toString());
         }
     }

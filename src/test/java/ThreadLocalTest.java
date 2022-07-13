@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 public class ThreadLocalTest {
     static ExecutorService main = Executors.newFixedThreadPool(1);
     static ExecutorService sub = Executors.newFixedThreadPool(1);
-//    static ThreadLocal<Integer> threadLocal = new InheritableThreadLocal<>();
+    //    static ThreadLocal<Integer> threadLocal = new InheritableThreadLocal<>();
     static ThreadLocal<Integer> threadLocal = new TransmittableThreadLocal<>();
 
     public static void main(String[] args) throws Exception {

@@ -21,6 +21,7 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
 import org.mybatis.spring.transaction.SpringManagedTransaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -186,6 +187,10 @@ public class OpMybatisInterceptor implements Interceptor {
         if (sql.toLowerCase().startsWith("update")) {
             SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
             List<SQLObject> sqlObjects = sqlUpdateStatement.getWhere().getChildren();
+            if (CollectionUtils.isEmpty(sqlObjects)) {
+                log.warn("不支持全表更新埋点");
+                return;
+            }
             StringBuilder whereCondition = new StringBuilder();
             for (int i = 0; i < sqlObjects.size(); i++) {
                 if (i % 2 == 0)

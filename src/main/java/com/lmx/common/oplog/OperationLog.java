@@ -1,13 +1,15 @@
 package com.lmx.common.oplog;
 
 import com.google.gson.Gson;
+import lombok.Data;
 
+@Data
 public class OperationLog {
 
     //应用ID appId
     private int appId;
     //应用名称 appName 对应 ES的index
-    private String appName;
+    private String appName, traceId, tableName;
     //日志级别
     private String loglevel;
     //创建时间
