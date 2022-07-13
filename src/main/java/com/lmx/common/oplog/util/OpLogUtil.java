@@ -2,11 +2,13 @@ package com.lmx.common.oplog.util;
 
 import com.lmx.common.oplog.OpLog;
 import com.lmx.common.oplog.OperationLog;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+@Slf4j
 public class OpLogUtil {
     /**
      * appender 格式只保留msg
@@ -27,6 +29,7 @@ public class OpLogUtil {
     }
 
     public static void printLog(List l) {
+        log.info("modify data={}", l);
         OperationLog operationLog = new OperationLog();
         int i = 0;
         //偶数为改前值，奇数为改后值

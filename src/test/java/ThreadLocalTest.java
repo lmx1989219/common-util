@@ -1,6 +1,9 @@
 import com.alibaba.ttl.TransmittableThreadLocal;
+import com.alibaba.ttl.TtlRunnable;
+import com.lmx.common.util.AesUtil;
 import com.lmx.common.util.PDFUtil;
 
+import java.util.Base64;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,17 +19,16 @@ import java.util.concurrent.Executors;
 public class ThreadLocalTest {
     static ExecutorService main = Executors.newFixedThreadPool(1);
     static ExecutorService sub = Executors.newFixedThreadPool(1);
-    //    static ThreadLocal<Integer> threadLocal = new InheritableThreadLocal<>();
+//    static ThreadLocal<Integer> threadLocal = new InheritableThreadLocal<>();
     static ThreadLocal<Integer> threadLocal = new TransmittableThreadLocal<>();
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
 //        for (int i = 0; i < 8; i++) {
 //            threadLocal.set(i);//模拟在servlet拦截器设置上下文值
 //            Runnable task = () -> {
 //                //模拟在hystrix取上下文值
 //                System.out.println(Thread.currentThread() + ",get value=" + threadLocal.get());
-//                //释放上下文值
-//                threadLocal.remove();
+//
 //            };
 //            Runnable ttlRunnable = TtlRunnable.get(task);
 //            sub.execute(ttlRunnable);
@@ -34,8 +36,12 @@ public class ThreadLocalTest {
 //        Thread.sleep(Long.MAX_VALUE);
 
 
-        String fileName = "C:\\Users\\Administrator\\Desktop\\体检报告.pdf";
-        PDFUtil pdfUtil = new PDFUtil();
-        System.out.println(pdfUtil.readPDF(fileName));
+//        String fileName = "C:\\Users\\Administrator\\Desktop\\体检报告.pdf";
+//        PDFUtil pdfUtil = new PDFUtil();
+//        System.out.println(pdfUtil.readPDF(fileName));
+
+        String str = "lmx_007", key = "14LbKUwKowbSgARK6/uSpw==";
+        AesUtil.encrypt(str, key, "utf-8");
     }
+
 }

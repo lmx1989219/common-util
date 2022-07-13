@@ -3,7 +3,6 @@ package com.lmx.common.interceptor;
 import com.google.common.collect.Lists;
 import com.lmx.common.annotation.EncDecrypt;
 import com.lmx.common.service.EncAndDecryptService;
-import com.sun.deploy.util.ArrayUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.annotations.Param;

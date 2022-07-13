@@ -1,6 +1,7 @@
 package com.lmx.common.oplog;
 
 import com.alibaba.druid.sql.ast.SQLObject;
+import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.ast.statement.SQLUpdateSetItem;
 import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
 import com.alibaba.druid.sql.parser.SQLParserUtils;
@@ -8,7 +9,6 @@ import com.alibaba.druid.sql.parser.SQLStatementParser;
 import com.alibaba.druid.util.JdbcConstants;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -17,21 +17,20 @@ import org.apache.ibatis.mapping.SqlCommandType;
 import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.session.ResultHandler;
-import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 import org.mybatis.spring.transaction.SpringManagedTransaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.ReflectionUtils;
 
-import javax.sql.DataSource;
-import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Properties;
 import java.util.regex.Matcher;
 
 /**
@@ -40,15 +39,11 @@ import java.util.regex.Matcher;
  * 基于dbType很容易扩展
  */
 @Intercepts({
-        @Signature(method = "query", type = Executor.class, args = {
-                MappedStatement.class, Object.class, RowBounds.class,
-                ResultHandler.class}),
         @Signature(method = "update", type = Executor.class, args = {MappedStatement.class, Object.class})
 })
 public class OpMybatisInterceptor implements Interceptor {
     private Executor target;
     private Logger log = LoggerFactory.getLogger(OpMybatisInterceptor.class);
-    private ThreadLocal cachesQry = new ThreadLocal();//缓存查询结果
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -66,65 +61,40 @@ public class OpMybatisInterceptor implements Interceptor {
         SqlCommandType sqlCommandType = mappedStatement.getSqlCommandType();
         List cache = Lists.newArrayList();
         //更新前 查询
-        if (ContextHolder.hasContext() && sqlCommandType == SqlCommandType.UPDATE
-                && cachesQry.get() == null) {
+        if (ContextHolder.hasContext()) {
             sql = sql.toLowerCase();
-            long start = System.currentTimeMillis();
             try {
                 this.buildQuerySql(sql, cache);
-                log.info("operator help query cost {}ms", System.currentTimeMillis() - start);
             } catch (Exception e) {
                 log.error("operator help query error", e);
             }
         }
         Object returnObj = invocation.proceed();
         //针对update埋点抓取
-        if (sqlCommandType == SqlCommandType.UPDATE) {
-            //事务提交成功则记录日志
-            if (returnObj instanceof Integer && (Integer) returnObj > 0 && ContextHolder.hasContext()) {
-                sql = sql.toLowerCase();
-                try {
-                    ContextHolder.set(cachesQry);
-                    ContextHolder.set(this.compareDiff(sql, cache));
-                } catch (Exception e) {
-                    log.error("operator log error", e);
-                } finally {
-                    //每次比对完成，需要释放
-                    cachesQry.remove();
-                }
-            }
-        }
-        if (!(returnObj instanceof Integer) && ContextHolder.hasContext()) {
-            //缓存当前线程查询的数据
-            if (cachesQry.get() == null) {
-                List list = Lists.newArrayList();
-                //注意：这里以文本缓存，对象需要深度复制，否则会因为持久完成被更新掉
-                list.add(new Gson().toJson(returnObj));
-                cachesQry.set(list);
+        //事务提交成功则记录日志
+        if (returnObj instanceof Integer && (Integer) returnObj > 0 && ContextHolder.hasContext()) {
+            sql = sql.toLowerCase();
+            try {
+                ContextHolder.set(this.compareDiff(sql, cache));
+            } catch (Exception e) {
+                log.error("operator log error", e);
             }
         }
         return returnObj;
     }
 
-    private javax.sql.DataSource getDataSource() {
+    private Connection getConnect() {
         org.apache.ibatis.transaction.Transaction transaction = this.target.getTransaction();
         if (transaction == null) {
             log.error(String.format("Could not find transaction on target [%s]", this.target));
             return null;
         }
         if (transaction instanceof SpringManagedTransaction) {
-            String fieldName = "dataSource";
-            Field field = ReflectionUtils.findField(transaction.getClass(), fieldName, javax.sql.DataSource.class);
-
-            if (field == null) {
-                log.error(String.format("Could not find field [%s] of type [%s] on target [%s]",
-                        fieldName, javax.sql.DataSource.class, this.target));
-                return null;
+            try {
+                return transaction.getConnection();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-
-            ReflectionUtils.makeAccessible(field);
-            javax.sql.DataSource dataSource = (javax.sql.DataSource) ReflectionUtils.getField(field, transaction);
-            return dataSource;
         }
 
         log.error(String.format("---the transaction is not SpringManagedTransaction:%s", transaction.getClass().toString()));
@@ -154,10 +124,18 @@ public class OpMybatisInterceptor implements Interceptor {
                     String propertyName = parameterMapping.getProperty();
                     if (metaObject.hasGetter(propertyName)) {
                         Object obj = metaObject.getValue(propertyName);
-                        sql = sql.replaceFirst("\\?", Matcher.quoteReplacement(getParameterValue(obj)));
+                        if (propertyName.contains("createTime") || propertyName.contains("updateTime")) {
+                            sql = sql.replaceFirst("\\?", "'" + Matcher.quoteReplacement(getParameterValue(obj)) + "'");
+                        } else {
+                            sql = sql.replaceFirst("\\?", Matcher.quoteReplacement(getParameterValue(obj)));
+                        }
                     } else if (boundSql.hasAdditionalParameter(propertyName)) {
                         Object obj = boundSql.getAdditionalParameter(propertyName);
-                        sql = sql.replaceFirst("\\?", Matcher.quoteReplacement(getParameterValue(obj)));
+                        if (propertyName.contains("createTime") || propertyName.contains("updateTime")) {
+                            sql = sql.replaceFirst("\\?", "'" + Matcher.quoteReplacement(getParameterValue(obj)) + "'");
+                        } else {
+                            sql = sql.replaceFirst("\\?", Matcher.quoteReplacement(getParameterValue(obj)));
+                        }
                     }
                 }
             }
@@ -203,37 +181,42 @@ public class OpMybatisInterceptor implements Interceptor {
     }
 
     private void buildQuerySql(String sql, List cache) {
+        long start = System.currentTimeMillis();
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
-        SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
-        List<SQLObject> sqlObjects = sqlUpdateStatement.getWhere().getChildren();
-        StringBuilder whereCondition = new StringBuilder();
-        for (int i = 0; i < sqlObjects.size(); i++) {
-            if (i % 2 == 0)
-                whereCondition.append(sqlObjects.get(i) + "=");
-            else
-                whereCondition.append(sqlObjects.get(i) + " ");
+        if (sql.toLowerCase().startsWith("update")) {
+            SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
+            List<SQLObject> sqlObjects = sqlUpdateStatement.getWhere().getChildren();
+            StringBuilder whereCondition = new StringBuilder();
+            for (int i = 0; i < sqlObjects.size(); i++) {
+                if (i % 2 == 0)
+                    whereCondition.append(sqlObjects.get(i) + "=");
+                else
+                    whereCondition.append(sqlObjects.get(i) + " ");
+            }
+            qryData(sqlUpdateStatement, whereCondition, cache);
         }
+        log.info("operator help query cost {}ms", System.currentTimeMillis() - start);
+    }
+
+    private void qryData(SQLUpdateStatement sqlUpdateStatement, StringBuilder whereCondition, List cache) {
         String tableName = sqlUpdateStatement.getTableName().getSimpleName();
         List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
         List list = Lists.newArrayList();
         sqlUpdateSetItems.forEach(e -> list.add(e.getColumn()));
-        String selectColums = Joiner.on(",").join(list);
-
+        String selectColumns = Joiner.on(",").join(list);
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("select").append(" ").append(selectColums).append(" ");
+        stringBuilder.append("select").append(" ").append(selectColumns).append(" ");
         stringBuilder.append("from").append(" ").append(tableName).append(" ");
         stringBuilder.append("where").append(" ").append(whereCondition.toString());
         String querySQL = stringBuilder.toString();
         log.info("operator exec querySQL={}", querySQL);
 
-        DataSource dataSource = this.getDataSource();
-        try (Connection conn = dataSource.getConnection();
-             Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(querySQL)) {
+        Connection conn = this.getConnect();
+        try (Statement statement = conn.createStatement();
+             ResultSet rs = statement.executeQuery(querySQL);) {
             while (rs.next()) {
                 for (int i = 1; i <= list.size(); i++) {
-                    String val = rs.getString(i);
-                    cache.add(val);
+                    cache.add(rs.getString(i));
                 }
             }
             log.info("operator cache ={}", cache);
@@ -244,61 +227,22 @@ public class OpMybatisInterceptor implements Interceptor {
 
     private List compareDiff(String sql, List cache) {
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
-        SQLUpdateStatement sqlUpdateStatement = sqlStatementParser.parseUpdateStatement();
-        List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
-        List data = Lists.newArrayList();
-        List data_ = Lists.newArrayList();
-        for (int i = 0; i < sqlUpdateSetItems.size(); i++) {
-            SQLUpdateSetItem sqlUpdateSetItem = sqlUpdateSetItems.get(i);
-            String field = sqlUpdateSetItem.getColumn().toString();
-            String value = sqlUpdateSetItem.getValue().toString();
-            List<String> list = (List) cachesQry.get();
-            if (list != null) {
-                for (String object : list) {
-                    List l = new Gson().fromJson(object, List.class);
-                    for (Object o : l) {
-                        Map m = (Map) o;
-                        String v;
-                        Object obj = m.get(field);
-                        //处理sql计算的值更新
-                        if (value.contains("+")) {
-                            String[] val = value.split("\\+");
-                            String incrVal = val[1];
-                            if (obj instanceof Double) {
-                                value = String.valueOf((Double) obj + Double.valueOf(incrVal));
-                            }
-                        }
-                        if (obj instanceof Double) {
-                            value = String.valueOf(Double.valueOf(value));
-                        }
-                        if ((v = (String.valueOf(obj))) != null && !v.equals(value)) {
-                            data.add(v);//before
-                            data.add(value);//after
-                        }
-                    }
+        List dataDiff = Lists.newArrayList();
+        List dataModify = Lists.newArrayList();
+        if (sql.toLowerCase().startsWith("update")) {
+            List cache_ = Lists.newArrayList();
+            buildQuerySql(sql, cache_);
+            dataModify.addAll(cache_);
+            for (int i = 0; i < cache.size(); i++) {
+                if (!cache.get(i).equals(dataModify.get(i))) {
+                    dataDiff.add(cache.get(i));//before
+                    dataDiff.add(dataModify.get(i));//after
                 }
-            } else {
-                data_.add(value);
             }
+        } else if (sql.toLowerCase().startsWith("insert")) {
+            SQLInsertStatement sqlInsertStatement = (SQLInsertStatement) sqlStatementParser.parseInsert();
+            sqlInsertStatement.getChildren();
         }
-        for (int i = 0; i < cache.size(); i++) {
-            if (!cache.get(i).equals(data_.get(i))) {
-                data.add(cache.get(i));//before
-                String value = (String) data_.get(i);
-                //处理sql计算的值更新
-                if (value.contains("+")) {
-                    String[] val = value.split("\\+");
-                    String incrVal = val[1];
-                    try {
-                        Double oldVal = Double.parseDouble((String) cache.get(i));
-                        value = String.valueOf(oldVal + Double.valueOf(incrVal));
-                    } catch (Exception e) {
-                        log.error("", e);
-                    }
-                }
-                data.add(value);//after
-            }
-        }
-        return data;
+        return dataDiff;
     }
 }

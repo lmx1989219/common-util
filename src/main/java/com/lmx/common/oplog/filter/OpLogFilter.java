@@ -3,6 +3,7 @@ package com.lmx.common.oplog.filter;
 
 import com.lmx.common.oplog.ContextHolder;
 import com.lmx.common.oplog.util.OpLogUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
@@ -24,25 +25,19 @@ public class OpLogFilter implements Filter {
 
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         ContextHolder.initContext();
+        HttpServletRequest request = (HttpServletRequest) servletRequest;
+        request.getRequestURI();
+        request.getSession();
         filterChain.doFilter(servletRequest, servletResponse);
         try {
             long start = System.currentTimeMillis();
-            HttpServletRequest request = (HttpServletRequest) servletRequest;
-            request.getRequestURI();
-            request.getSession();
             //抓取上下文数据
             Object logObj = ContextHolder.getContext();
             if (logObj instanceof List) {
                 List<List> logList = (List) logObj;
                 if (!CollectionUtils.isEmpty(logList))
-                    for (int i = 0; i < logList.size(); ++i) {
-                        //清理threadlocal
-                        if (i % 2 == 0) {
-                            ((ThreadLocal) logList.get(i)).remove();
-                        } else {
-                            OpLogUtil.printLog(logList.get(i));
-                        }
-                    }
+                    logList.forEach(OpLogUtil::printLog);
+
             }
             log.info("operator log end cost: {}ms", System.currentTimeMillis() - start);
         } catch (Throwable throwable) {
