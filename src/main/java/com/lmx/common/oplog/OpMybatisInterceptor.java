@@ -60,12 +60,13 @@ public class OpMybatisInterceptor implements Interceptor {
         log.info("operator found biz sql={}", sql);
         //获取SQL类型
         SqlCommandType sqlCommandType = mappedStatement.getSqlCommandType();
-        List cache = Lists.newArrayList();
+        List<String> values = Lists.newArrayList();
+        List<String> fields = Lists.newArrayList();
         //更新前 查询
         if (ContextHolder.hasContext()) {
             sql = sql.toLowerCase();
             try {
-                this.buildQuerySql(sql, cache);
+                this.buildQuerySql(sql, values, fields);
             } catch (Exception e) {
                 log.error("operator help query error", e);
             }
@@ -76,7 +77,7 @@ public class OpMybatisInterceptor implements Interceptor {
         if (returnObj instanceof Integer && (Integer) returnObj > 0 && ContextHolder.hasContext()) {
             sql = sql.toLowerCase();
             try {
-                ContextHolder.set(this.compareDiff(sql, cache));
+                ContextHolder.set(this.compareDiff(sql, values, fields));
             } catch (Exception e) {
                 log.error("operator log error", e);
             }
@@ -181,7 +182,7 @@ public class OpMybatisInterceptor implements Interceptor {
     public void setProperties(Properties properties) {
     }
 
-    private void buildQuerySql(String sql, List cache) {
+    private void buildQuerySql(String sql, List values, List fields) {
         long start = System.currentTimeMillis();
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
         if (sql.toLowerCase().startsWith("update")) {
@@ -198,20 +199,22 @@ public class OpMybatisInterceptor implements Interceptor {
                 else
                     whereCondition.append(sqlObjects.get(i) + " ");
             }
-            qryData(sqlUpdateStatement, whereCondition, cache);
+            qryData(sqlUpdateStatement, whereCondition, values, fields);
         }
         log.info("operator help query cost {}ms", System.currentTimeMillis() - start);
     }
 
-    private void qryData(SQLUpdateStatement sqlUpdateStatement, StringBuilder whereCondition, List cache) {
+    private void qryData(SQLUpdateStatement sqlUpdateStatement, StringBuilder whereCondition, List values, List fields) {
         String tableName = sqlUpdateStatement.getTableName().getSimpleName();
         List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
         List list = Lists.newArrayList();
         sqlUpdateSetItems.forEach(e -> list.add(e.getColumn()));
+        fields.addAll(list);
         String selectColumns = Joiner.on(",").join(list);
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("select").append(" ").append(selectColumns).append(" ");
         stringBuilder.append("from").append(" ").append(tableName).append(" ");
+        fields.add(tableName);
         stringBuilder.append("where").append(" ").append(whereCondition.toString());
         String querySQL = stringBuilder.toString();
         log.info("operator exec querySQL={}", querySQL);
@@ -221,29 +224,30 @@ public class OpMybatisInterceptor implements Interceptor {
              ResultSet rs = statement.executeQuery(querySQL);) {
             while (rs.next()) {
                 for (int i = 1; i <= list.size(); i++) {
-                    cache.add(rs.getString(i));
+                    values.add(rs.getString(i));
                 }
             }
-            log.info("operator cache ={}", cache);
+            log.info("operator cache ={}", values);
         } catch (Exception e) {
             log.error("", e);
         }
     }
 
-    private List compareDiff(String sql, List cache) {
+    private List compareDiff(String sql, List values, List fields) {
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
         List dataDiff = Lists.newArrayList();
         List dataModify = Lists.newArrayList();
         if (sql.toLowerCase().startsWith("update")) {
             List cache_ = Lists.newArrayList();
-            buildQuerySql(sql, cache_);
+            buildQuerySql(sql, cache_, fields);
             dataModify.addAll(cache_);
-            for (int i = 0; i < cache.size(); i++) {
-                if (!cache.get(i).equals(dataModify.get(i))) {
-                    dataDiff.add(cache.get(i));//before
+            for (int i = 0; i < values.size(); i++) {
+                if (!values.get(i).equals(dataModify.get(i))) {
+                    dataDiff.add(fields.get(i) + "=" + values.get(i));//before field=value
                     dataDiff.add(dataModify.get(i));//after
                 }
             }
+            dataDiff.add(fields.get(fields.size() - 1));//tableName
         } else if (sql.toLowerCase().startsWith("insert")) {
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement) sqlStatementParser.parseInsert();
             sqlInsertStatement.getChildren();

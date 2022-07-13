@@ -34,14 +34,17 @@ public class OpLogUtil {
         OperationLog operationLog = new OperationLog();
         int i = 0;
         //偶数为改前值，奇数为改后值
-        for (i = 2 * i; 2 * i < l.size(); ++i) {
+        for (i = 2 * i; 2 * i < l.size() - 1; ++i) {
             String oldVal = (String) l.get(2 * i);
+            String[] arr = oldVal.split("=");
             String newVal = (String) l.get(2 * i + 1);
             operationLog.setAppName(System.getProperty("spring.application.name"));
             operationLog.setModifyValue(newVal);
-            operationLog.setOriginalValue(oldVal);
+            operationLog.setOriginalValue(arr[1]);
             //json结构输出，让filebeats完成后续导入kafka
             operationLog.setTraceId(MDC.get("X-B3-TraceId"));
+            operationLog.setTableName((String) l.get(l.size() - 1));
+            operationLog.setField(arr[0]);
             log_es.info(operationLog.toString());
         }
     }

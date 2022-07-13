@@ -7,6 +7,7 @@ import org.aspectj.lang.annotation.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -39,17 +40,12 @@ public class OpLogAspect {
             request.getRequestURI();
             request.getSession();
             //抓取上下文数据
-            Object obj = ContextHolder.getContext();
-            if (obj instanceof List) {
-                List<List> l_ = (List) obj;
-                for (int i = 0; i < l_.size(); ++i) {
-                    //清理threadlocal
-                    if (i % 2 == 0) {
-                        ((ThreadLocal) l_.get(i)).remove();
-                    } else {
-                        OpLogUtil.printLog(l_.get(i), opLogCollect);
-                    }
-                }
+            Object logObj = ContextHolder.getContext();
+            if (logObj instanceof List) {
+                List<List> logList = (List) logObj;
+                if (!CollectionUtils.isEmpty(logList))
+                    logList.forEach(OpLogUtil::printLog);
+
             }
             log.info("operator log end cost: {}ms", System.currentTimeMillis() - start);
         } catch (Throwable throwable) {
