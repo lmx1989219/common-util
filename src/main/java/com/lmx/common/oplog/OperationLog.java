@@ -9,7 +9,7 @@ public class OperationLog {
     //应用ID appId
     private int appId;
     //应用名称 appName 对应 ES的index
-    private String appName, traceId, tableName, field;
+    private String appName, traceId, tableName, tableId, field;
     //日志级别
     private String loglevel;
     //创建时间

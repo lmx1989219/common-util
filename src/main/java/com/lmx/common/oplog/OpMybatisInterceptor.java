@@ -71,7 +71,16 @@ public class OpMybatisInterceptor implements Interceptor {
                 log.error("operator help query error", e);
             }
         }
-        Object returnObj = invocation.proceed();
+        Object returnObj;
+        try {
+            returnObj = invocation.proceed();
+        } catch (Throwable e) {
+            //sql执行异常时 撤销埋点数据
+            if (ContextHolder.hasContext()) {
+                ContextHolder.clear();
+            }
+            throw e;
+        }
         //针对update埋点抓取
         //事务提交成功则记录日志
         if (returnObj instanceof Integer && (Integer) returnObj > 0 && ContextHolder.hasContext()) {
@@ -182,7 +191,7 @@ public class OpMybatisInterceptor implements Interceptor {
     public void setProperties(Properties properties) {
     }
 
-    private void buildQuerySql(String sql, List values, List fields) {
+    private void buildQuerySql(String sql, List<String> values, List<String> fields) {
         long start = System.currentTimeMillis();
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
         if (sql.toLowerCase().startsWith("update")) {
@@ -204,15 +213,15 @@ public class OpMybatisInterceptor implements Interceptor {
         log.info("operator help query cost {}ms", System.currentTimeMillis() - start);
     }
 
-    private void qryData(SQLUpdateStatement sqlUpdateStatement, StringBuilder whereCondition, List values, List fields) {
+    private void qryData(SQLUpdateStatement sqlUpdateStatement, StringBuilder whereCondition, List<String> values, List<String> fields) {
         String tableName = sqlUpdateStatement.getTableName().getSimpleName();
         List<SQLUpdateSetItem> sqlUpdateSetItems = sqlUpdateStatement.getItems();
-        List list = Lists.newArrayList();
-        sqlUpdateSetItems.forEach(e -> list.add(e.getColumn()));
-        fields.addAll(list);
-        String selectColumns = Joiner.on(",").join(list);
+        List<String> columns = Lists.newArrayList();
+        sqlUpdateSetItems.forEach(e -> columns.add(e.getColumn().toString()));
+        fields.addAll(columns);
+        String selectColumns = Joiner.on(",").join(columns);
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("select").append(" ").append(selectColumns).append(" ");
+        stringBuilder.append("select").append(" id, ").append(selectColumns).append(" ");
         stringBuilder.append("from").append(" ").append(tableName).append(" ");
         fields.add(tableName);
         stringBuilder.append("where").append(" ").append(whereCondition.toString());
@@ -221,9 +230,10 @@ public class OpMybatisInterceptor implements Interceptor {
 
         Connection conn = this.getConnect();
         try (Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(querySQL);) {
+             ResultSet rs = statement.executeQuery(querySQL)) {
             while (rs.next()) {
-                for (int i = 1; i <= list.size(); i++) {
+                //columns attach id
+                for (int i = 1; i <= columns.size() + 1; i++) {
                     values.add(rs.getString(i));
                 }
             }
@@ -233,21 +243,22 @@ public class OpMybatisInterceptor implements Interceptor {
         }
     }
 
-    private List compareDiff(String sql, List values, List fields) {
+    private List compareDiff(String sql, List<String> values, List<String> fields) {
         SQLStatementParser sqlStatementParser = SQLParserUtils.createSQLStatementParser(sql, JdbcConstants.MYSQL);
-        List dataDiff = Lists.newArrayList();
-        List dataModify = Lists.newArrayList();
+        List<String> dataDiff = Lists.newArrayList();
+        List<String> dataModify = Lists.newArrayList();
         if (sql.toLowerCase().startsWith("update")) {
-            List cache_ = Lists.newArrayList();
+            List<String> cache_ = Lists.newArrayList();
             buildQuerySql(sql, cache_, fields);
             dataModify.addAll(cache_);
-            for (int i = 0; i < values.size(); i++) {
+            for (int i = 1; i < values.size(); i++) {
                 if (!values.get(i).equals(dataModify.get(i))) {
                     dataDiff.add(fields.get(i) + "=" + values.get(i));//before field=value
                     dataDiff.add(dataModify.get(i));//after
                 }
             }
             dataDiff.add(fields.get(fields.size() - 1));//tableName
+            dataDiff.add(values.get(0));//id
         } else if (sql.toLowerCase().startsWith("insert")) {
             SQLInsertStatement sqlInsertStatement = (SQLInsertStatement) sqlStatementParser.parseInsert();
             sqlInsertStatement.getChildren();
