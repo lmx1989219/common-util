@@ -1,8 +1,8 @@
-package com.lmx.common.service.impl;
+package com.basetonedata.ftd.mybatis.service.impl;
 
+import com.basetonedata.ftd.mybatis.service.EncAndDecryptService;
+import com.basetonedata.ftd.mybatis.util.AesUtil;
 import com.google.common.base.Charsets;
-import com.lmx.common.service.EncAndDecryptService;
-import com.lmx.common.util.AesUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**

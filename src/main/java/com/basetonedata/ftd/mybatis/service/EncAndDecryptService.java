@@ -1,4 +1,4 @@
-package com.lmx.common.service;
+package com.basetonedata.ftd.mybatis.service;
 
 /**
  * 加解密接口，可自己灵活扩展

@@ -1,9 +1,9 @@
-package com.lmx.common.interceptor;
+package com.basetonedata.ftd.mybatis.interceptor;
 
 import com.google.common.collect.Lists;
-import com.lmx.common.annotation.EncDecrypt;
-import com.lmx.common.service.EncAndDecryptService;
-import com.lmx.common.service.impl.DefaultAesServiceImpl;
+import com.basetonedata.ftd.mybatis.annotation.EncDecrypt;
+import com.basetonedata.ftd.mybatis.service.EncAndDecryptService;
+import com.basetonedata.ftd.mybatis.service.impl.DefaultAesServiceImpl;
 import lombok.AllArgsConstructor;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.executor.Executor;
@@ -11,15 +11,11 @@ import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
-import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -44,7 +40,7 @@ public class EncAndDecryptInterceptor implements Interceptor {
     }
 
     @AllArgsConstructor
-    class EncField {
+    static class EncField {
         String paramName;
         int idx;
     }
@@ -124,7 +120,7 @@ public class EncAndDecryptInterceptor implements Interceptor {
         Class<?> entityClass = param.getClass();
 
         List<Field> encDecryptField = this.getEncDecryptField(entityClass);
-        if (CollectionUtils.isEmpty(encDecryptField)) {
+        if (Objects.isNull(encDecryptField)) {
             return;
         }
         for (Field field : encDecryptField) {
@@ -132,9 +128,6 @@ public class EncAndDecryptInterceptor implements Interceptor {
             Object originalVal = field.get(param);
             Object encryptVal = encryptField(originalVal);
             if (originalVal != null) {
-                //需要注意返回的类型转换，后续要处理
-//                field.getType().newInstance();
-                //加密
                 field.set(param, encryptVal);
             }
         }
@@ -143,15 +136,13 @@ public class EncAndDecryptInterceptor implements Interceptor {
     private Object handlerDecrypt(Object resp) throws Exception {
         if (resp instanceof List) {
             List<Object> resultList = ((List) resp);
-            if (!org.springframework.util.CollectionUtils.isEmpty(resultList)) {
-                for (Object entity : resultList) {
-                    for (Field field : entity.getClass().getDeclaredFields()) {
-                        if (field.getDeclaredAnnotation(EncDecrypt.class) != null) {
-                            field.setAccessible(true);
-                            Object enc = field.get(entity);
-                            if (Objects.nonNull(enc))
-                                field.set(entity, decryptField(enc));
-                        }
+            for (Object entity : resultList) {
+                for (Field field : entity.getClass().getDeclaredFields()) {
+                    if (field.getDeclaredAnnotation(EncDecrypt.class) != null) {
+                        field.setAccessible(true);
+                        Object enc = field.get(entity);
+                        if (Objects.nonNull(enc))
+                            field.set(entity, decryptField(enc));
                     }
                 }
             }
