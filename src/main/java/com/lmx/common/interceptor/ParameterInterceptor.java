@@ -14,7 +14,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.sql.PreparedStatement;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 /**
  * 参数拦截处理
@@ -28,9 +31,17 @@ import java.util.*;
 public class ParameterInterceptor implements Interceptor {
     private static final String NATIVE_SQL_ENTITY_PREFIX = "param", NATIVE_SQL_ENTITY = "param1";
     private EncAndDecryptService encryptDecrypt;
+    private String regTel = "^1(3[0-9]|4[01456879]|5[0-35-9]|6[2567]|7[0-8]|8[0-9]|9[0-35-9])\\d{8}$";
+    private String regIdCard = "(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}(\\d|X|x)$)";
 
     public ParameterInterceptor(EncAndDecryptService encryptDecrypt) {
         this.encryptDecrypt = encryptDecrypt;
+    }
+
+    public ParameterInterceptor(EncAndDecryptService encryptDecrypt, String regTel, String regIdCard) {
+        this.encryptDecrypt = encryptDecrypt;
+        this.regTel = regTel;
+        this.regIdCard = regIdCard;
     }
 
     @Override
