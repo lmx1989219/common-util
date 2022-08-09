@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.executor.parameter.ParameterHandler;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.plugin.*;
+import org.apache.ibatis.reflection.MetaObject;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -88,6 +89,21 @@ public class ParameterInterceptor implements Interceptor {
                         }
                     }
                 } else {
+                    //兼容mybatis-plus的lambda语法的更新和查询
+                    if (et.toString().toLowerCase().contains("com.baomidou.mybatisplus.core.conditions.query.lambdaquerywrapper")
+                            || et.toString().toLowerCase().contains("com.baomidou.mybatisplus.core.conditions.query.querywrapper")) {
+                        MetaObject metaObject = mappedStatement.getConfiguration().newMetaObject(parameterObject);
+                        mappedStatement.getBoundSql(parameterObject).getParameterMappings().forEach(parameterMapping -> {
+                            String propertyName = parameterMapping.getProperty();
+                            String value = metaObject.getValue(propertyName).toString();
+                            if (value.matches(regTel)) {
+                                metaObject.setValue(propertyName, encryptDecrypt.encrypt(value));
+                            }
+                            if (value.matches(regIdCard)) {
+                                metaObject.setValue(propertyName, encryptDecrypt.encrypt(value));
+                            }
+                        });
+                    }
                     encField(et);
                 }
                 return invocation.proceed();
@@ -147,7 +163,7 @@ public class ParameterInterceptor implements Interceptor {
     }
 
     @AllArgsConstructor
-    class EncField {
+    static class EncField {
         String paramName;
         int idx;
     }
